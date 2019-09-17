@@ -1,0 +1,26 @@
+---
+title: "data import"
+output: github_document
+---
+
+```{r setup}
+
+library(tidyverse)
+
+
+
+```
+## loading a datatset
+```{r}
+## reads in a datatset
+## 不要用绝对路径！！！
+## 不适用其他电脑！！！
+## 不要用read。csv， 用read_csv!!!
+## don't use "view "inside a Rmarkdown!!! use it in the console
+getwd()
+
+litters_data = read_csv(file = "./data/FAS_litters.csv")
+litters_data = janitor::clean_names(litters_data )
+
+```
+
