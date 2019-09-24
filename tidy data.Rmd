@@ -1,0 +1,73 @@
+---
+title: "Tidy data and relational datasets"
+output: html_document
+---
+
+写在课前的话，在Google的时候， 如果想查某个函数的用法，最好带上package的名字
+tidy data 的时候，不要漏掉任何变量和observation
+每一行（就是每一列的组合）都是unique
+在merge不同table的时候，可以将id相同的行合并
+
+tidyr updats frequently, so install it again before library
+```{r}
+library(tidyverse)
+```
+```{r }
+pulse_data = haven::read_sas("./data/public_pulse_data.sas7bdat") %>%
+  janitor::clean_names()
+pulse_data
+pulse_tidy_data = 
+  pivot_longer(
+    pulse_data, 
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", 
+    values_to = "bdi")
+
+pulse_tidy_data
+
+pulse_tidy_data = 
+  pivot_longer(
+    pulse_data, 
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", 
+    names_prefix = "bdi_score_",
+    values_to = "bdi")
+
+pulse_tidy_data
+
+pulse_data = 
+  haven::read_sas("./data/public_pulse_data.sas7bdat") %>%
+  janitor::clean_names() %>%
+  pivot_longer(
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", 
+    names_prefix = "bdi_score_",
+    values_to = "bdi") %>%
+  select(id, visit, everything()) %>%
+  mutate(
+    visit = replace(visit, visit == "bl", "00m"),
+    visit = factor(visit, levels = str_c(c("00", "01", "06", "12"), "m"))) %>%
+  arrange(id, visit)
+
+print(pulse_data, n = 12)
+
+litters_data = 
+  read_csv("./data/FAS_litters.csv", col_types = "ccddiiii") %>% 
+  janitor::clean_names() %>%
+  separate(group, into = c("dose", "day_of_tx"), sep = 3) %>%
+  mutate(
+    dose = str_to_lower(dose),
+    wt_gain = gd18_weight - gd0_weight) %>%
+  arrange(litter_number)
+
+litters_data
+
+analysis_result = tibble(
+  group = c("treatment", "treatment", "placebo", "placebo"),
+  time = c("pre", "post", "pre", "post"),
+  mean = c(4, 8, 3.5, 4)
+)
+
+analysis_result
+```
+
