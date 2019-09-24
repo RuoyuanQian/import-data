@@ -377,24 +377,15 @@ summary {
 <pre><code>## ── Conflicts ────────────────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<div id="wide-to-long" class="section level2">
+<h2>wide to long</h2>
 <pre class="r"><code>pulse_data = haven::read_sas(&quot;./data/public_pulse_data.sas7bdat&quot;) %&gt;%
   janitor::clean_names()
-pulse_data</code></pre>
-<pre><code>## # A tibble: 1,087 x 7
-##       id   age sex   bdi_score_bl bdi_score_01m bdi_score_06m bdi_score_12m
-##    &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;        &lt;dbl&gt;         &lt;dbl&gt;         &lt;dbl&gt;         &lt;dbl&gt;
-##  1 10003  48.0 male             7             1             2             0
-##  2 10015  72.5 male             6            NA            NA            NA
-##  3 10022  58.5 male            14             3             8            NA
-##  4 10026  72.7 male            20             6            18            16
-##  5 10035  60.4 male             4             0             1             2
-##  6 10050  84.7 male             2            10            12             8
-##  7 10078  31.3 male             4             0            NA            NA
-##  8 10088  56.9 male             5            NA             0             2
-##  9 10091  76.0 male             0             3             4             0
-## 10 10092  74.2 fema…           10             2            11             6
-## # … with 1,077 more rows</code></pre>
-<pre class="r"><code>pulse_tidy_data = 
+
+## the BDI score is spread across four columns, which correspond to four observation times
+## 4列变2列，“name_to” can rename the 分组 column from the old four columns
+##&quot;values_to&quot; rename the value column
+pulse_tidy_data = 
   pivot_longer(
     pulse_data, 
     bdi_score_bl:bdi_score_12m,
@@ -416,7 +407,8 @@ pulse_tidy_data</code></pre>
 ##  9 10022  58.5 male  bdi_score_bl     14
 ## 10 10022  58.5 male  bdi_score_01m     3
 ## # … with 4,338 more rows</code></pre>
-<pre class="r"><code>pulse_tidy_data = 
+<pre class="r"><code>## “names_prefix” 可以在合并不同列的时候去掉每列前面名字相同的部分，留下想要的
+pulse_tidy_data = 
   pivot_longer(
     pulse_data, 
     bdi_score_bl:bdi_score_12m,
@@ -439,6 +431,17 @@ pulse_tidy_data</code></pre>
 ##  9 10022  58.5 male  bl       14
 ## 10 10022  58.5 male  01m       3
 ## # … with 4,338 more rows</code></pre>
+<pre class="r"><code>##“mutate(xx=recode)”可以将分组变量的某个观测改名
+pulse_tidy_data = 
+  pivot_longer(
+    pulse_data, 
+    bdi_score_bl:bdi_score_12m,
+    names_to = &quot;visit&quot;, 
+    names_prefix = &quot;bdi_score_&quot;,
+    values_to = &quot;bdi&quot;)%&gt;%
+  mutate(
+    visit=recode(visit,&quot;bl&quot;=&quot;00m&quot;)
+  )</code></pre>
 <pre class="r"><code>pulse_data = 
   haven::read_sas(&quot;./data/public_pulse_data.sas7bdat&quot;) %&gt;%
   janitor::clean_names() %&gt;%
@@ -470,32 +473,30 @@ print(pulse_data, n = 12)</code></pre>
 ## 11 10022 06m    58.5 male      8
 ## 12 10022 12m    58.5 male     NA
 ## # … with 4,336 more rows</code></pre>
-<pre class="r"><code>litters_data = 
+<pre class="r"><code>## &quot;sep=3&quot; 把group变量里的东西从第三个字母开始分开成两列
+litters_data = 
   read_csv(&quot;./data/FAS_litters.csv&quot;, col_types = &quot;ccddiiii&quot;) %&gt;% 
   janitor::clean_names() %&gt;%
-  separate(group, into = c(&quot;dose&quot;, &quot;day_of_tx&quot;), sep = 3) %&gt;%
-  mutate(
-    dose = str_to_lower(dose),
-    wt_gain = gd18_weight - gd0_weight) %&gt;%
-  arrange(litter_number)
+  separate(group, into = c(&quot;dose&quot;, &quot;day_of_tx&quot;), sep = 3)
 
 litters_data</code></pre>
-<pre><code>## # A tibble: 49 x 10
+<pre><code>## # A tibble: 49 x 9
 ##    dose  day_of_tx litter_number gd0_weight gd18_weight gd_of_birth
 ##    &lt;chr&gt; &lt;chr&gt;     &lt;chr&gt;              &lt;dbl&gt;       &lt;dbl&gt;       &lt;int&gt;
-##  1 con   7         #1/2/95/2           27          42            19
-##  2 con   7         #1/5/3/83/3-…       NA          NA            20
-##  3 con   8         #1/6/2/2/95-2       NA          NA            20
-##  4 mod   7         #1/82/3-2           NA          NA            19
-##  5 low   8         #100                20          39.2          20
-##  6 low   7         #101                23.8        42.7          20
-##  7 low   7         #102                22.6        43.3          20
-##  8 mod   7         #103                21.4        42.1          19
-##  9 mod   7         #106                21.7        37.8          20
-## 10 low   7         #107                22.6        42.4          20
-## # … with 39 more rows, and 4 more variables: pups_born_alive &lt;int&gt;,
-## #   pups_dead_birth &lt;int&gt;, pups_survive &lt;int&gt;, wt_gain &lt;dbl&gt;</code></pre>
-<pre class="r"><code>analysis_result = tibble(
+##  1 Con   7         #85                 19.7        34.7          20
+##  2 Con   7         #1/2/95/2           27          42            19
+##  3 Con   7         #5/5/3/83/3-3       26          41.4          19
+##  4 Con   7         #5/4/2/95/2         28.5        44.1          19
+##  5 Con   7         #4/2/95/3-3         NA          NA            20
+##  6 Con   7         #2/2/95/3-2         NA          NA            20
+##  7 Con   7         #1/5/3/83/3-…       NA          NA            20
+##  8 Con   8         #3/83/3-3           NA          NA            20
+##  9 Con   8         #2/95/3             NA          NA            20
+## 10 Con   8         #3/5/2/2/95         28.5        NA            20
+## # … with 39 more rows, and 3 more variables: pups_born_alive &lt;int&gt;,
+## #   pups_dead_birth &lt;int&gt;, pups_survive &lt;int&gt;</code></pre>
+<pre class="r"><code>## 建一个tidy的数据
+analysis_result = tibble(
   group = c(&quot;treatment&quot;, &quot;treatment&quot;, &quot;placebo&quot;, &quot;placebo&quot;),
   time = c(&quot;pre&quot;, &quot;post&quot;, &quot;pre&quot;, &quot;post&quot;),
   mean = c(4, 8, 3.5, 4)
@@ -509,6 +510,151 @@ analysis_result</code></pre>
 ## 2 treatment post    8  
 ## 3 placebo   pre     3.5
 ## 4 placebo   post    4</code></pre>
+<pre class="r"><code>## useful for generating a report to share with others 
+## 把time列拆开成两列
+pivot_wider(
+  analysis_result, 
+  names_from = &quot;time&quot;, 
+  values_from = &quot;mean&quot;)</code></pre>
+<pre><code>## # A tibble: 2 x 3
+##   group       pre  post
+##   &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt;
+## 1 treatment   4       8
+## 2 placebo     3.5     4</code></pre>
+<pre class="r"><code>## &quot;mutate()&quot; add a new column named movie, and fill the variable with &quot;fellowship_ring&quot;
+fellowship_ring = 
+  readxl::read_excel(&quot;./data/LotR_Words.xlsx&quot;, range = &quot;B3:D6&quot;) %&gt;%
+  mutate(movie = &quot;fellowship_ring&quot;)
+
+two_towers = 
+  readxl::read_excel(&quot;./data/LotR_Words.xlsx&quot;, range = &quot;F3:H6&quot;) %&gt;%
+  mutate(movie = &quot;two_towers&quot;)
+
+return_king = 
+  readxl::read_excel(&quot;./data/LotR_Words.xlsx&quot;, range = &quot;J3:L6&quot;) %&gt;%
+  mutate(movie = &quot;return_king&quot;)
+
+## &quot;female&quot; and &quot;male&quot; split, not tidy
+bind_rows(fellowship_ring, two_towers, return_king)</code></pre>
+<pre><code>## # A tibble: 9 x 4
+##   Race   Female  Male movie          
+##   &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;          
+## 1 Elf      1229   971 fellowship_ring
+## 2 Hobbit     14  3644 fellowship_ring
+## 3 Man         0  1995 fellowship_ring
+## 4 Elf       331   513 two_towers     
+## 5 Hobbit      0  2463 two_towers     
+## 6 Man       401  3589 two_towers     
+## 7 Elf       183   510 return_king    
+## 8 Hobbit      2  2673 return_king    
+## 9 Man       268  2459 return_king</code></pre>
+<pre class="r"><code>## combine &quot;female&quot; and &quot;male&quot; as &quot;sex&quot;
+##str_to_lower 降序排列
+## &quot;select(movie, everything()) &quot;让“novie”排在最前面
+lotr_tidy = 
+  bind_rows(fellowship_ring, two_towers, return_king) %&gt;%
+  janitor::clean_names() %&gt;%
+  pivot_longer(
+    female:male,
+    names_to = &quot;sex&quot;, 
+    values_to = &quot;words&quot;) %&gt;%
+  mutate(race = str_to_lower(race)) %&gt;% 
+  select(movie, everything()) 
+
+lotr_tidy</code></pre>
+<pre><code>## # A tibble: 18 x 4
+##    movie           race   sex    words
+##    &lt;chr&gt;           &lt;chr&gt;  &lt;chr&gt;  &lt;dbl&gt;
+##  1 fellowship_ring elf    female  1229
+##  2 fellowship_ring elf    male     971
+##  3 fellowship_ring hobbit female    14
+##  4 fellowship_ring hobbit male    3644
+##  5 fellowship_ring man    female     0
+##  6 fellowship_ring man    male    1995
+##  7 two_towers      elf    female   331
+##  8 two_towers      elf    male     513
+##  9 two_towers      hobbit female     0
+## 10 two_towers      hobbit male    2463
+## 11 two_towers      man    female   401
+## 12 two_towers      man    male    3589
+## 13 return_king     elf    female   183
+## 14 return_king     elf    male     510
+## 15 return_king     hobbit female     2
+## 16 return_king     hobbit male    2673
+## 17 return_king     man    female   268
+## 18 return_king     man    male    2459</code></pre>
+<p>合并数据集</p>
+<pre class="r"><code>pup_data = 
+  read_csv(&quot;./data/FAS_pups.csv&quot;, col_types = &quot;ciiiii&quot;) %&gt;%
+  janitor::clean_names() %&gt;%
+  mutate(sex = recode(sex, `1` = &quot;male&quot;, `2` = &quot;female&quot;)) 
+
+#pup_data%&gt;%view
+
+litter_data = 
+  read_csv(&quot;./data/FAS_litters.csv&quot;, col_types = &quot;ccddiiii&quot;) %&gt;%
+  janitor::clean_names() %&gt;%
+  select(-pups_survive) %&gt;%
+  mutate(
+    wt_gain = gd18_weight - gd0_weight,
+    group = str_to_lower(group))
+
+pup_data%&gt;%view
+litter_data%&gt;%view
+
+
+fas_data = 
+  left_join(pup_data, litter_data, by = &quot;litter_number&quot;)
+
+## 若不写“by = ”，会默认第一个相同列
+## 最好自己设置，不用两个数据集有一样的顺序，会自动识别
+## cannnot join multiple table at one time
+ left_join(pup_data, litter_data)</code></pre>
+<pre><code>## Joining, by = &quot;litter_number&quot;</code></pre>
+<pre><code>## # A tibble: 313 x 13
+##    litter_number sex   pd_ears pd_eyes pd_pivot pd_walk group gd0_weight
+##    &lt;chr&gt;         &lt;chr&gt;   &lt;int&gt;   &lt;int&gt;    &lt;int&gt;   &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt;
+##  1 #85           male        4      13        7      11 con7        19.7
+##  2 #85           male        4      13        7      12 con7        19.7
+##  3 #1/2/95/2     male        5      13        7       9 con7        27  
+##  4 #1/2/95/2     male        5      13        8      10 con7        27  
+##  5 #5/5/3/83/3-3 male        5      13        8      10 con7        26  
+##  6 #5/5/3/83/3-3 male        5      14        6       9 con7        26  
+##  7 #5/4/2/95/2   male       NA      14        5       9 con7        28.5
+##  8 #4/2/95/3-3   male        4      13        6       8 con7        NA  
+##  9 #4/2/95/3-3   male        4      13        7       9 con7        NA  
+## 10 #2/2/95/3-2   male        4      NA        8      10 con7        NA  
+## # … with 303 more rows, and 5 more variables: gd18_weight &lt;dbl&gt;,
+## #   gd_of_birth &lt;int&gt;, pups_born_alive &lt;int&gt;, pups_dead_birth &lt;int&gt;,
+## #   wt_gain &lt;dbl&gt;</code></pre>
+<pre class="r"><code>fas_data</code></pre>
+<pre><code>## # A tibble: 313 x 13
+##    litter_number sex   pd_ears pd_eyes pd_pivot pd_walk group gd0_weight
+##    &lt;chr&gt;         &lt;chr&gt;   &lt;int&gt;   &lt;int&gt;    &lt;int&gt;   &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt;
+##  1 #85           male        4      13        7      11 con7        19.7
+##  2 #85           male        4      13        7      12 con7        19.7
+##  3 #1/2/95/2     male        5      13        7       9 con7        27  
+##  4 #1/2/95/2     male        5      13        8      10 con7        27  
+##  5 #5/5/3/83/3-3 male        5      13        8      10 con7        26  
+##  6 #5/5/3/83/3-3 male        5      14        6       9 con7        26  
+##  7 #5/4/2/95/2   male       NA      14        5       9 con7        28.5
+##  8 #4/2/95/3-3   male        4      13        6       8 con7        NA  
+##  9 #4/2/95/3-3   male        4      13        7       9 con7        NA  
+## 10 #2/2/95/3-2   male        4      NA        8      10 con7        NA  
+## # … with 303 more rows, and 5 more variables: gd18_weight &lt;dbl&gt;,
+## #   gd_of_birth &lt;int&gt;, pups_born_alive &lt;int&gt;, pups_dead_birth &lt;int&gt;,
+## #   wt_gain &lt;dbl&gt;</code></pre>
+<pre class="r"><code>## full join and left_join has something different
+full_join (pup_data, litter_data, by = &quot;litter_number&quot;)%&gt;%
+   filter(is.na(sex))</code></pre>
+<pre><code>## # A tibble: 2 x 13
+##   litter_number sex   pd_ears pd_eyes pd_pivot pd_walk group gd0_weight
+##   &lt;chr&gt;         &lt;chr&gt;   &lt;int&gt;   &lt;int&gt;    &lt;int&gt;   &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt;
+## 1 #112          &lt;NA&gt;       NA      NA       NA      NA low7        23.9
+## 2 #7/82-3-2     &lt;NA&gt;       NA      NA       NA      NA mod8        26.9
+## # … with 5 more variables: gd18_weight &lt;dbl&gt;, gd_of_birth &lt;int&gt;,
+## #   pups_born_alive &lt;int&gt;, pups_dead_birth &lt;int&gt;, wt_gain &lt;dbl&gt;</code></pre>
+</div>
 
 
 

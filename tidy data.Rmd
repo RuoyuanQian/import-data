@@ -12,10 +12,14 @@ tidyr updats frequently, so install it again before library
 ```{r}
 library(tidyverse)
 ```
+## wide to long
 ```{r }
 pulse_data = haven::read_sas("./data/public_pulse_data.sas7bdat") %>%
   janitor::clean_names()
-pulse_data
+
+## the BDI score is spread across four columns, which correspond to four observation times
+## 4列变2列，“name_to” can rename the 分组 column from the old four columns
+##"values_to" rename the value column
 pulse_tidy_data = 
   pivot_longer(
     pulse_data, 
@@ -25,6 +29,7 @@ pulse_tidy_data =
 
 pulse_tidy_data
 
+## “names_prefix” 可以在合并不同列的时候去掉每列前面名字相同的部分，留下想要的
 pulse_tidy_data = 
   pivot_longer(
     pulse_data, 
@@ -35,6 +40,21 @@ pulse_tidy_data =
 
 pulse_tidy_data
 
+##“mutate(xx=recode)”可以将分组变量的某个观测改名
+pulse_tidy_data = 
+  pivot_longer(
+    pulse_data, 
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", 
+    names_prefix = "bdi_score_",
+    values_to = "bdi")%>%
+  mutate(
+    visit=recode(visit,"bl"="00m")
+  )
+
+```
+
+```{r}
 pulse_data = 
   haven::read_sas("./data/public_pulse_data.sas7bdat") %>%
   janitor::clean_names() %>%
@@ -51,17 +71,18 @@ pulse_data =
 
 print(pulse_data, n = 12)
 
+```
+
+```{r}
+## "sep=3" 把group变量里的东西从第三个字母开始分开成两列
 litters_data = 
   read_csv("./data/FAS_litters.csv", col_types = "ccddiiii") %>% 
   janitor::clean_names() %>%
-  separate(group, into = c("dose", "day_of_tx"), sep = 3) %>%
-  mutate(
-    dose = str_to_lower(dose),
-    wt_gain = gd18_weight - gd0_weight) %>%
-  arrange(litter_number)
+  separate(group, into = c("dose", "day_of_tx"), sep = 3)
 
 litters_data
 
+## 建一个tidy的数据
 analysis_result = tibble(
   group = c("treatment", "treatment", "placebo", "placebo"),
   time = c("pre", "post", "pre", "post"),
@@ -69,5 +90,82 @@ analysis_result = tibble(
 )
 
 analysis_result
+
+## useful for generating a report to share with others 
+## 把time列拆开成两列
+pivot_wider(
+  analysis_result, 
+  names_from = "time", 
+  values_from = "mean")
 ```
+
+```{r}
+## "mutate()" add a new column named movie, and fill the variable with "fellowship_ring"
+fellowship_ring = 
+  readxl::read_excel("./data/LotR_Words.xlsx", range = "B3:D6") %>%
+  mutate(movie = "fellowship_ring")
+
+two_towers = 
+  readxl::read_excel("./data/LotR_Words.xlsx", range = "F3:H6") %>%
+  mutate(movie = "two_towers")
+
+return_king = 
+  readxl::read_excel("./data/LotR_Words.xlsx", range = "J3:L6") %>%
+  mutate(movie = "return_king")
+
+## "female" and "male" split, not tidy
+bind_rows(fellowship_ring, two_towers, return_king)
+
+## combine "female" and "male" as "sex"
+##str_to_lower 降序排列
+## "select(movie, everything()) "让“novie”排在最前面
+lotr_tidy = 
+  bind_rows(fellowship_ring, two_towers, return_king) %>%
+  janitor::clean_names() %>%
+  pivot_longer(
+    female:male,
+    names_to = "sex", 
+    values_to = "words") %>%
+  mutate(race = str_to_lower(race)) %>% 
+  select(movie, everything()) 
+
+lotr_tidy
+
+```
+
+合并数据集
+```{r}
+pup_data = 
+  read_csv("./data/FAS_pups.csv", col_types = "ciiiii") %>%
+  janitor::clean_names() %>%
+  mutate(sex = recode(sex, `1` = "male", `2` = "female")) 
+
+#pup_data%>%view
+
+litter_data = 
+  read_csv("./data/FAS_litters.csv", col_types = "ccddiiii") %>%
+  janitor::clean_names() %>%
+  select(-pups_survive) %>%
+  mutate(
+    wt_gain = gd18_weight - gd0_weight,
+    group = str_to_lower(group))
+
+pup_data%>%view
+litter_data%>%view
+
+
+fas_data = 
+  left_join(pup_data, litter_data, by = "litter_number")
+
+## 若不写“by = ”，会默认第一个相同列
+## 最好自己设置，不用两个数据集有一样的顺序，会自动识别
+## cannnot join multiple table at one time
+ left_join(pup_data, litter_data)
+
+fas_data
+## full join and left_join has something different
+full_join (pup_data, litter_data, by = "litter_number")%>%
+   filter(is.na(sex))
+```
+
 
